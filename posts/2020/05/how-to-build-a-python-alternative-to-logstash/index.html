@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="author" content="Aaron Mekonnen ">
+<meta name="description" content="Python&amp;rsquo;s asyncio library provides tools for writing high-performance concurrent code using the async/await syntax. In this post we&amp;rsquo;ll explore asynchronous programming by building a lightweight alternative to Logstash, a data processing pipeline that ingests data from different sources, transforms it, and then sends it to a data stash. The pipeline will run in a docker container using the sidecar pattern. It&amp;rsquo;ll fetch data (container logs) from a running container, structure it using regular expressions, and ship it to an Elasticsearch instance." />
+<meta name="keywords" content=", python, asyncio, concurrency, docker" />
+<meta name="robots" content="noodp" />
+<meta name="theme-color" content="#252627" />
+<link rel="canonical" href="https://example.com/posts/2020/05/how-to-build-a-python-alternative-to-logstash/" />
+
+
+    <title>
+        
+            How to build a Python alternative to Logstash :: Aaron Mekonnen  — Ideas and projects
+        
+    </title>
+
+
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.2.1/css/flag-icon.min.css" rel="stylesheet"
+    type="text/css">
+
+
+
+<link rel="stylesheet" href="https://example.com/main.dede02da9537a98158079c023e83573e18127834838ef08172acce888341a797.css">
+
+
+
+
+
+
+<meta itemprop="name" content="How to build a Python alternative to Logstash">
+<meta itemprop="description" content="Python&rsquo;s asyncio library provides tools for writing high-performance concurrent code using the async/await syntax. In this post we&rsquo;ll explore asynchronous programming by building a lightweight alternative to Logstash, a data processing pipeline that ingests data from different sources, transforms it, and then sends it to a data stash. The pipeline will run in a docker container using the sidecar pattern. It&rsquo;ll fetch data (container logs) from a running container, structure it using regular expressions, and ship it to an Elasticsearch instance.">
+
+
+<meta itemprop="datePublished" content="2020-05-22T10:09:23-05:00" />
+<meta itemprop="dateModified" content="2020-05-22T10:09:23-05:00" />
+<meta itemprop="wordCount" content="2555">
+
+
+
+<meta itemprop="keywords" content="python,asyncio,concurrency,docker," />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://example.com"/>
+
+<meta name="twitter:title" content="How to build a Python alternative to Logstash"/>
+<meta name="twitter:description" content="Python&rsquo;s asyncio library provides tools for writing high-performance concurrent code using the async/await syntax. In this post we&rsquo;ll explore asynchronous programming by building a lightweight alternative to Logstash, a data processing pipeline that ingests data from different sources, transforms it, and then sends it to a data stash. The pipeline will run in a docker container using the sidecar pattern. It&rsquo;ll fetch data (container logs) from a running container, structure it using regular expressions, and ship it to an Elasticsearch instance."/>
+
+
+
+
+
+
+
+    <meta property="article:published_time" content="2020-05-22 10:09:23 -0500 CDT" />
+
+
+
+
+
+
+
+
+    </head>
+
+    <body class="">
+        <div class="container">
+            <header class="header">
+    <span class="header__inner">
+        <a href="https://example.com/" style="text-decoration: none;">
+    <div class="logo">
+        
+            <span class="logo__mark">></span>
+            <span class="logo__text">$ cd /home/</span>
+            <span class="logo__cursor" style=
+                  "
+                   
+                   ">
+            </span>
+        
+    </div>
+</a>
+
+
+        <span class="header__right">
+            
+                <nav class="menu">
+    <ul class="menu__inner"><li><a href="https://example.com/about/">About</a></li><li><a href="https://example.com/posts/">Posts</a></li>
+    </ul>
+</nav>
+
+                <span class="menu-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                </span>
+            
+
+            <span class="theme-toggle unselectable"><svg class="theme-toggler" width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M22 41C32.4934 41 41 32.4934 41 22C41 11.5066 32.4934 3 22
+  3C11.5066 3 3 11.5066 3 22C3 32.4934 11.5066 41 22 41ZM7 22C7
+  13.7157 13.7157 7 22 7V37C13.7157 37 7 30.2843 7 22Z"/>
+</svg>
+</span>
+        </span>
+    </span>
+</header>
+
+
+            <div class="content">
+                
+    <main class="post">
+
+        <div class="post-info">
+            <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>12 minutes
+
+            
+
+            </p>
+        </div>
+
+        <article>
+            <h1 class="post-title">
+                <a href="https://example.com/posts/2020/05/how-to-build-a-python-alternative-to-logstash/">How to build a Python alternative to Logstash</a>
+            </h1>
+
+            
+
+            <div class="post-content">
+                <p>Python&rsquo;s asyncio library provides tools for writing high-performance concurrent code using the async/await syntax. In this post we&rsquo;ll explore asynchronous programming by building a lightweight alternative to <a href="https://www.elastic.co/logstash" target="_blank">Logstash</a>, a data processing pipeline that ingests data from different sources, transforms it, and then sends it to a data stash. The pipeline will run in a docker container using the <a href="https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar" target="_blank">sidecar pattern</a>. It&rsquo;ll fetch data (container logs) from a running container, structure it using regular expressions, and ship it to an Elasticsearch instance. Some parts of the program were omitted for clarity. The full example can be found on [Github](). Let&rsquo;s get started.</p>
+
+<p>We&rsquo;ll start by creating a dockerfile for the log producer and consumer containers.</p>
+
+<p><em>Dockerfile</em></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">FROM python:<span style="color:#f60">3.8</span>-slim
+
+WORKDIR /code
+
+RUN pip install -U uvloop aiohttp urllib3 docker
+
+COPY . .</code></pre></div>
+<p>Next we&rsquo;ll use Docker Compose to set up a multi-node Elasticsearch cluster and also include producer and consumer services to emit and consume logs.</p>
+
+<p><em>docker-compose.yml</em></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">version: <span style="color:#87ceeb">&#39;3.8&#39;</span>
+services:
+  producer:
+    image: base
+    build: .
+    container_name: prod1
+    volumes:
+      - .:/code
+    command: python producer.py
+    environment:
+      - PYTHONUNBUFFERED=<span style="color:#f60">1</span>
+    networks:
+      - elastic
+  consumer:
+    image: base
+    volumes:
+      - .:/code
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker:/var/lib/docker
+    command: python consumer.py
+    environment:
+      - PYTHONUNBUFFERED=<span style="color:#f60">1</span>
+      - SOURCE_CONTAINER=prod1
+    networks:
+      - elastic
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:<span style="color:#f60">7.6.2</span>
+    container_name: es01
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=<span style="color:#f00">true</span>
+      - <span style="color:#87ceeb">&#34;ES_JAVA_OPTS=-Xms512m -Xmx512m&#34;</span>
+    ulimits:
+      memlock:
+        soft: -<span style="color:#f60">1</span>
+        hard: -<span style="color:#f60">1</span>
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    ports:
+      - <span style="color:#f60">9200</span>:<span style="color:#f60">9200</span>
+    networks:
+      - elastic
+  es02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:<span style="color:#f60">7.6.2</span>
+    container_name: es02
+    environment:
+      - node.name=es02
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es01,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=<span style="color:#f00">true</span>
+      - <span style="color:#87ceeb">&#34;ES_JAVA_OPTS=-Xms512m -Xmx512m&#34;</span>
+    ulimits:
+      memlock:
+        soft: -<span style="color:#f60">1</span>
+        hard: -<span style="color:#f60">1</span>
+    volumes:
+      - data02:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+  es03:
+    image: docker.elastic.co/elasticsearch/elasticsearch:<span style="color:#f60">7.6.2</span>
+    container_name: es03
+    environment:
+      - node.name=es03
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es01,es02
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=<span style="color:#f00">true</span>
+      - <span style="color:#87ceeb">&#34;ES_JAVA_OPTS=-Xms512m -Xmx512m&#34;</span>
+    ulimits:
+      memlock:
+        soft: -<span style="color:#f60">1</span>
+        hard: -<span style="color:#f60">1</span>
+    volumes:
+      - data03:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+volumes:
+  data01:
+    driver: local
+  data02:
+    driver: local
+  data03:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge</code></pre></div>
+<p>This Docker Compose file brings up two services using the base image built from the Dockerfile above, and three Elasticsearch services to make up a three-node Elasticsearch cluster. The Elasticsearch cluster setup is the same as the one in the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html" target="_blank">official guide.</a> Next we&rsquo;ll go ahead and create <code>producer.py</code> and <code>consumer.py</code>. You can download the sample data set used in this example <a href="https://download.elastic.co/demos/logstash/gettingstarted/logstash-tutorial.log.gz" target="_blank">here.</a></p>
+
+<p><em>producer.py</em></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f00">import</span> time
+<span style="color:#f00">from</span> pathlib <span style="color:#f00">import</span> Path
+
+path = <span style="color:#87ceeb">&#34;logstash-tutorial.log&#34;</span>
+text = Path(path).read_text().split(<span style="color:#87ceeb">&#34;</span><span style="color:#87ceeb">\n</span><span style="color:#87ceeb">&#34;</span>)
+<span style="color:#f00">while</span> True:
+    <span style="color:#f00">for</span> line in text:
+         <span style="color:#f00">print</span>(line)
+         time.sleep(<span style="color:#f60">0.1</span>)</code></pre></div>
+<p>The producer simply reads and pushes logs to <code>stdout</code>. But instead of opening and reading the same file repeatedly, we&rsquo;ll load the file into memory (it&rsquo;s only 24kb) once and iterate over the text. Run the program to see the output.</p>
+
+<pre><code>$ python producer.py
+83.149.9.216 - - [04/Jan/2015:05:13:42 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/kibana-search.png HTTP/1.1&quot; 200 203023 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:42 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/kibana-dashboard3.png HTTP/1.1&quot; 200 171717 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:44 +0000] &quot;GET /presentations/logstash-monitorama-2013/plugin/highlight/highlight.js HTTP/1.1&quot; 200 26185 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:44 +0000] &quot;GET /presentations/logstash-monitorama-2013/plugin/zoom-js/zoom.js HTTP/1.1&quot; 200 7697 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:45 +0000] &quot;GET /presentations/logstash-monitorama-2013/plugin/notes/notes.js HTTP/1.1&quot; 200 2892 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:42 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/sad-medic.png HTTP/1.1&quot; 200 430406 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:45 +0000] &quot;GET /presentations/logstash-monitorama-2013/css/fonts/Roboto-Bold.ttf HTTP/1.1&quot; 200 38720 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:45 +0000] &quot;GET /presentations/logstash-monitorama-2013/css/fonts/Roboto-Regular.ttf HTTP/1.1&quot; 200 41820 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:45 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/frontend-response-codes.png HTTP/1.1&quot; 200 52878 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:43 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/kibana-dashboard.png HTTP/1.1&quot; 200 321631 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:46 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/Dreamhost_logo.svg HTTP/1.1&quot; 200 2126 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:43 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/kibana-dashboard2.png HTTP/1.1&quot; 200 394967 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+83.149.9.216 - - [04/Jan/2015:05:13:46 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/apache-icon.gif HTTP/1.1&quot; 200 8095 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+
+</code></pre>
+
+<p>Before we start building the consumer service it&rsquo;s important to understand how Docker manages container logs. Because containers are ephemeral, logs emitted to <code>stdout</code> and <code>stderr</code> streams are stored on the Docker host. By default Docker annotates the logs with the log source (<code>stdout</code> or <code>stderr</code>) and timestamp, and stores them as JSON in the <code>/var/lib/docker/containers/</code> directory. Logs can take up a lot of disk space on the host over time so log management pipelines like the <a href="https://www.elastic.co/what-is/elk-stack" target="_blank">ELK</a> stack are used to store and visualize logs. In our case we&rsquo;re replacing the L in ELK with our own log shipper, <code>consumer.py</code>. First let&rsquo;s define some regex patterns we want to match.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">INT = <span style="color:#87ceeb">&#39;(?:[+-]?(?:[0-9]+))&#39;</span>
+IP = <span style="color:#87ceeb">&#39;(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)&#39;</span>
+USER = <span style="color:#87ceeb">&#39;[a-zA-Z0-9._-]+&#39;</span>
+MONTHDAY =  <span style="color:#87ceeb">&#39;(?:(?:0[1-9])|(?:[12][0-9])|(?:3[01])|[1-9])&#39;</span>
+MONTH = <span style="color:#87ceeb">&#39;(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)&#39;</span>
+YEAR = <span style="color:#87ceeb">&#39;(?:\d\d){1,2}&#39;</span>
+HOUR = <span style="color:#87ceeb">&#39;(?:2[0123]|[01]?[0-9])&#39;</span>
+MINUTE = <span style="color:#87ceeb">&#39;(?:[0-5][0-9])&#39;</span>
+SECOND = <span style="color:#87ceeb">&#39;(?:(?:[0-5]?[0-9]|60)(?:[:.,][0-9]+)?)&#39;</span>
+TIME = f<span style="color:#87ceeb">&#39;(?!&lt;[0-9]){HOUR}:{MINUTE}(?::{SECOND})(?![0-9])&#39;</span>
+HTTPDATE = f<span style="color:#87ceeb">&#39;{MONTHDAY}/{MONTH}/{YEAR}:{TIME} {INT}&#39;</span>
+VERSION = <span style="color:#87ceeb">&#39;[0-9]+(?:(?:\.[0-9])+)?&#39;</span>
+REQUEST = f<span style="color:#87ceeb">&#39;</span><span style="color:#87ceeb">\\</span><span style="color:#87ceeb">&#34;(?:\w+ \S+(?: HTTP/{VERSION})?|.*?)</span><span style="color:#87ceeb">\\</span><span style="color:#87ceeb">&#34;&#39;</span>
+TIMESTAMP = f<span style="color:#87ceeb">&#34;\[{HTTPDATE}\]&#34;</span>
+QUOTE = f<span style="color:#87ceeb">&#39;(?:</span><span style="color:#87ceeb">\\</span><span style="color:#87ceeb">&#34;.+</span><span style="color:#87ceeb">\\</span><span style="color:#87ceeb">&#34;)&#39;</span>
+COMMONLOG = <span style="color:#87ceeb">r</span><span style="color:#87ceeb">&#34; &#34;</span>.join([f<span style="color:#87ceeb">&#39;(?P&lt;ip&gt;{IP})&#39;</span>,f<span style="color:#87ceeb">&#39;(?P&lt;ident&gt;{USER})&#39;</span>,f<span style="color:#87ceeb">&#39;(?P&lt;auth&gt;{USER})&#39;</span>,f<span style="color:#87ceeb">&#39;(?P&lt;timestamp&gt;{TIMESTAMP})&#39;</span>,f<span style="color:#87ceeb">&#39;(?P&lt;request&gt;{REQUEST})&#39;</span>,<span style="color:#87ceeb">&#34;(?P&lt;status&gt;\d+)&#34;</span>, <span style="color:#87ceeb">&#34;(?P&lt;bytes&gt;\d+|-)&#34;</span>, f<span style="color:#87ceeb">&#39;(?P&lt;referrer&gt;{QUOTE})&#39;</span>, f<span style="color:#87ceeb">&#39;(?P&lt;agent&gt;{QUOTE})&#39;</span>])</code></pre></div>
+<p>Then we&rsquo;ll write a <code>reader</code> and a <code>worker</code> function to read and ship the logs. We&rsquo;ll also have a queue as a message broker between the reader and workers. We can read the log files from the host asynchronously, using a non blocking stream generator and asyncio queues but if we want the reader to be able to get logs in real time, without yielding to the event loop, it must be available at all times. So instead the reader will run in a separate thread and ingest log streams using the Docker client library.</p>
+
+<p><em>consumer.py</em></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">pattern = re.compile(COMMONLOG)
+queue = queue.Queue()
+
+async <span style="color:#f00">def</span> <span style="color:#ff0">worker</span>(name, client):
+    log = logging.getLogger(name)
+    <span style="color:#f00">while</span> True:
+        <span style="color:#f00">try</span>:
+            line = queue.get_nowait()
+        <span style="color:#f00">except</span> Empty <span style="color:#f00">as</span> e:
+            log.info(<span style="color:#87ceeb">&#39;Queue is empty.&#39;</span>)
+            await asyncio.sleep(<span style="color:#f60">1</span>)
+        <span style="color:#f00">else</span>:
+            line = line.decode(<span style="color:#87ceeb">&#39;utf-8&#39;</span>)
+            match = pattern.match(line)
+            <span style="color:#f00">if</span> match is None:
+                log.info(f<span style="color:#87ceeb">&#34;No match found for {line.strip()}&#34;</span>)
+                await asyncio.sleep(<span style="color:#f60">0.001</span>)
+            <span style="color:#f00">else</span>:
+                async <span style="color:#f00">with</span> client.post(<span style="color:#87ceeb">&#34;http://es01:9200/logs/_doc/&#34;</span>,
+                               data=json.dumps(match.groupdict()).encode(<span style="color:#87ceeb">&#39;utf-8&#39;</span>),
+                              headers={<span style="color:#87ceeb">&#39;Content-Type&#39;</span>: <span style="color:#87ceeb">&#39;application/json&#39;</span>}
+                          ) <span style="color:#f00">as</span> resp:
+                    <span style="color:#f00">if</span> resp.status != <span style="color:#f60">201</span>:
+                         err = await resp.text()
+                         log.info(f<span style="color:#87ceeb">&#34;{resp.status}: {err}&#34;</span>)
+                    <span style="color:#f00">else</span>:
+                        log.info(<span style="color:#87ceeb">&#34;Upload succesful.&#34;</span>)
+
+
+<span style="color:#f00">def</span> <span style="color:#ff0">reader</span>(container):
+    log = logging.getLogger(<span style="color:#87ceeb">&#39;reader&#39;</span>)
+    stream = container.logs(stream=True)
+    <span style="color:#f00">while</span> True:
+        <span style="color:#f00">try</span>:
+            queue.put_nowait(next(stream))
+        <span style="color:#f00">except</span> StopIteration <span style="color:#f00">as</span> e:
+            log.debug(<span style="color:#87ceeb">&#34;No more logs&#34;</span>)
+            time.sleep(<span style="color:#f60">0.01</span>)
+
+async <span style="color:#f00">def</span> <span style="color:#ff0">main</span>():
+    c_name = os.getenv(<span style="color:#87ceeb">&#39;SOURCE_CONTAINER&#39;</span>)
+    <span style="color:#f00">if</span> not c_name:
+        <span style="color:#f00">print</span>(<span style="color:#87ceeb">&#34;You must specify a source container name.&#34;</span>)
+        sys.exit(<span style="color:#f60">1</span>)
+    container = get_container(c_name)
+    threading.Thread(target=reader, args = (container,), daemon=True).start()
+    async <span style="color:#f00">with</span> aiohttp.ClientSession() <span style="color:#f00">as</span> client:
+        done, pending = await asyncio.wait([asyncio.create_task(worker(f<span style="color:#87ceeb">&#34;worker{i}&#34;</span>, client)) <span style="color:#f00">for</span> i in range(<span style="color:#f60">5</span>)])
+
+
+<span style="color:#f00">if</span> __name__ == <span style="color:#87ceeb">&#39;__main__&#39;</span>:
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=<span style="color:#87ceeb">&#39;</span><span style="color:#87ceeb">%(threadName)s</span><span style="color:#87ceeb"> </span><span style="color:#87ceeb">%(name)s</span><span style="color:#87ceeb">: </span><span style="color:#87ceeb">%(message)s</span><span style="color:#87ceeb">&#39;</span>,
+        stream=sys.stderr,
+    )
+    asyncio.run(main())</code></pre></div>
+<p>The <code>container.logs</code> function returns a blocking generator that we can iterate over to retrieve log outputs as they&rsquo;re emitted. The worker coroutine reads from the queue and sends matching logs to Elasticsearch. Let&rsquo;s run it using 5 worker coroutines and see the output.</p>
+
+<pre><code>$ docker-compose build producer &amp;&amp; docker-compose up
+.
+.
+.
+prod1       | 50.150.204.184 - - [04/Jan/2015:05:17:06 +0000] &quot;GET /images/googledotcom.png HTTP/1.1&quot; 200 65748 &quot;http://www.google.com/search?q=https//:google.com&amp;source=lnms&amp;tbm=isch&amp;sa=X&amp;ei=4-r8UvDrKZOgkQe7x4CICw&amp;ved=0CAkQ_AUoAA&amp;biw=320&amp;bih=441&quot; &quot;Mozilla/5.0 (Linux; U; Android 4.0.4; en-us; LG-MS770 Build/IMM76I) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30&quot;
+prod1       | 207.241.237.225 - - [04/Jan/2015:05:17:35 +0000] &quot;GET /blog/tags/examples HTTP/1.0&quot; 200 9208 &quot;http://www.semicomplete.com/blog/tags/C&quot; &quot;Mozilla/5.0 (compatible; archive.org_bot +http://www.archive.org/details/archive.org_bot)&quot;
+prod1       | 200.49.190.101 - - [04/Jan/2015:05:17:39 +0000] &quot;GET /reset.css HTTP/1.1&quot; 200 1015 &quot;-&quot; &quot;-&quot;
+es01        | {&quot;type&quot;: &quot;server&quot;, &quot;timestamp&quot;: &quot;2020-05-18T23:21:43,366Z&quot;, &quot;level&quot;: &quot;WARN&quot;, &quot;component&quot;: &quot;o.e.c.r.a.AllocationService&quot;, &quot;cluster.name&quot;: &quot;es-docker-cluster&quot;, &quot;node.name&quot;: &quot;es01&quot;, &quot;message&quot;: &quot;[logs][0] marking unavailable shards as stale: [Oablme2xQHK4NJrYLLaP1Q]&quot;, &quot;cluster.uuid&quot;: &quot;6gFHNbH6RjuVwXEHwep55w&quot;, &quot;node.id&quot;: &quot;MFQQPkIsSpOgH_6prsOpYg&quot;  }
+prod1       | 200.49.190.100 - - [04/Jan/2015:05:17:37 +0000] &quot;GET /blog/tags/web HTTP/1.1&quot; 200 44019 &quot;-&quot; &quot;QS304 Profile/MIDP-2.0 Configuration/CLDC-1.1&quot;
+prod1       | 200.49.190.101 - - [04/Jan/2015:05:17:41 +0000] &quot;GET /style2.css HTTP/1.1&quot; 200 4877 &quot;-&quot; &quot;-&quot;
+prod1       | 200.49.190.101 - - [04/Jan/2015:05:17:48 +0000] &quot;GET /images/jordan-80.png HTTP/1.1&quot; 200 6146 &quot;-&quot; &quot;QS304 Profile/MIDP-2.0 Configuration/CLDC-1.1&quot;
+consumer_1  | MainThread worker1: Upload succesful.
+consumer_1  | MainThread worker0: Upload succesful.
+consumer_1  | MainThread worker3: Upload succesful.
+consumer_1  | MainThread worker2: Upload succesful.
+prod1       | 66.249.73.185 - - [04/Jan/2015:05:18:48 +0000] &quot;GET /reset.css HTTP/1.1&quot; 200 1015 &quot;-&quot; &quot;Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)&quot;
+consumer_1  | MainThread worker4: Upload succesful.
+consumer_1  | MainThread worker2: Upload succesful.
+consumer_1  | MainThread worker0: Upload succesful.
+prod1       | 66.249.73.135 - - [04/Jan/2015:05:18:55 +0000] &quot;GET /blog/tags/munin HTTP/1.1&quot; 200 9746 &quot;-&quot; &quot;Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)&quot;
+consumer_1  | MainThread worker1: Upload succesful.
+consumer_1  | MainThread worker3: Upload succesful.
+consumer_1  | MainThread worker4: Upload succesful.
+consumer_1  | MainThread worker2: Upload succesful.
+consumer_1  | MainThread worker0: Upload succesful.
+.
+.
+.
+
+</code></pre>
+
+<p>Let&rsquo;s recap. So far we have a producer service that emits 10 logs every second and a consumer service that asynchronously processes and ships logs to a an Elasticsearch cluster. Here we&rsquo;ve pre set the log frequency and the delay time in <code>reader</code> for illustrative purposes but in most real systems, logs are emitted at random or variable time intervals. Therefore log pipelines must be able to handle unexpected spikes in log volume or frequency. Let&rsquo;s add a <code>controller</code> coroutine that will monitor the service by creating worker tasks whenever the queue size (qsize) is increasing <em>and</em> is over a specific threshold.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">async <span style="color:#f00">def</span> <span style="color:#ff0">controller</span>(max_size=<span style="color:#f60">100</span>):
+    log = logging.getLogger(<span style="color:#87ceeb">&#39;controller&#39;</span>)
+    async <span style="color:#f00">with</span> aiohttp.ClientSession() <span style="color:#f00">as</span> client:
+        <span style="color:#0f0"># start with 5 workers</span>
+        [asyncio.create_task(worker(f<span style="color:#87ceeb">&#34;worker{i}&#34;</span>, client)) <span style="color:#f00">for</span> i in range(<span style="color:#f60">5</span>)]
+        num = <span style="color:#f60">5</span>
+        delay = <span style="color:#f60">1</span>
+        curr_size = <span style="color:#f60">0</span>
+        prev_size = <span style="color:#f60">0</span>
+        <span style="color:#f00">while</span> True:
+            curr_size = queue.qsize()
+            <span style="color:#f00">if</span> curr_size &gt; max_size and curr_size &gt; prev_size:
+                asyncio.create_task(worker(f<span style="color:#87ceeb">&#34;worker{num}&#34;</span>, client))
+                await asyncio.sleep(delay/<span style="color:#f60">100</span>)
+                delay += <span style="color:#f60">1</span>
+                num += <span style="color:#f60">1</span>
+            <span style="color:#f00">else</span>:
+                await asyncio.sleep(<span style="color:#f60">1</span>)
+                delay = <span style="color:#f60">1</span>
+            prev_size = curr_size
+            log.debug(f<span style="color:#87ceeb">&#34;Curently running {len(asyncio.all_tasks()) -2} workers. Queue size: {queue.qsize()}&#34;</span>)
+
+async <span style="color:#f00">def</span> <span style="color:#ff0">main</span>():
+    c_name = os.getenv(<span style="color:#87ceeb">&#39;SOURCE_CONTAINER&#39;</span>)
+    <span style="color:#f00">if</span> not c_name:
+        <span style="color:#f00">print</span>(<span style="color:#87ceeb">&#34;You must specify a source container name.&#34;</span>)
+        sys.exit(<span style="color:#f60">1</span>)
+    container = get_container(c_name)
+    threading.Thread(target=reader, args = (container,), daemon=True).start()
+    done, pending = await asyncio.wait([asyncio.create_task(controller())])</code></pre></div>
+<p>Let&rsquo;s also change the delay in <code>producer</code> to simulate randomness of emitting logs.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f00">def</span> <span style="color:#ff0">main</span>():
+    <span style="color:#f00">while</span> True:
+        <span style="color:#f00">for</span> line in text:
+            <span style="color:#f00">print</span>(line)
+            time.sleep(random.random()*<span style="color:#f60">0.01</span>)</code></pre></div>
+<p>Output:</p>
+
+<pre><code>$ docker-compose up
+.
+.
+.
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:32 +0000] &quot;GET /articles/dynamic-dns-with-dhcp/ HTTP/1.1&quot; 200 18848 &quot;http://www.google.ro/url?sa=t&amp;rct=j&amp;q=&amp;esrc=s&amp;source=web&amp;cd=2&amp;ved=0CCwQFjAB&amp;url=http%3A%2F%2Fwww.semicomplete.com%2Farticles%2Fdynamic-dns-with-dhcp%2F&amp;ei=W88AU4n9HOq60QXbv4GwBg&amp;usg=AFQjCNEF1X4Rs52UYQyLiySTQxa97ozM4g&amp;bvm=bv.61535280,d.d2k&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:32 +0000] &quot;GET /reset.css HTTP/1.1&quot; 200 1015 &quot;http://www.semicomplete.com/articles/dynamic-dns-with-dhcp/&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:33 +0000] &quot;GET /style2.css HTTP/1.1&quot; 200 4877 &quot;http://www.semicomplete.com/articles/dynamic-dns-with-dhcp/&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:33 +0000] &quot;GET /favicon.ico HTTP/1.1&quot; 200 3638 &quot;-&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+consumer_1  | MainThread controller: Curently running 6 workers. Queue size: 325
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:33 +0000] &quot;GET /images/jordan-80.png HTTP/1.1&quot; 200 6146 &quot;http://www.semicomplete.com/articles/dynamic-dns-with-dhcp/&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+consumer_1  | MainThread controller: Curently running 7 workers. Queue size: 325
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:33 +0000] &quot;GET /images/web/2009/banner.png HTTP/1.1&quot; 200 52315 &quot;http://www.semicomplete.com/style2.css&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+.
+.
+.
+consumer_1  | MainThread worker16: Upload succesful.
+prod1       | 83.149.9.216 - - [04/Jan/2015:05:13:47 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/elasticsearch.png HTTP/1.1&quot; 200 8026 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+consumer_1  | MainThread worker31: Upload succesful.
+consumer_1  | MainThread worker24: Upload succesful.
+consumer_1  | MainThread worker25: Upload succesful.
+prod1       | 83.149.9.216 - - [04/Jan/2015:05:13:47 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/logstashbook.png HTTP/1.1&quot; 200 54662 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+consumer_1  | MainThread worker10: Upload succesful.
+prod1       | 83.149.9.216 - - [04/Jan/2015:05:13:47 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/github-contributions.png HTTP/1.1&quot; 200 34245 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+consumer_1  | MainThread worker14: Upload succesful.
+prod1       | 83.149.9.216 - - [04/Jan/2015:05:13:47 +0000] &quot;GET /presentations/logstash-monitorama-2013/css/print/paper.css HTTP/1.1&quot; 200 4254 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+consumer_1  | MainThread worker12: Upload succesful.
+consumer_1  | MainThread worker19: Upload succesful.
+prod1       | 83.149.9.216 - - [04/Jan/2015:05:13:47 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/1983_delorean_dmc-12-pic-38289.jpeg HTTP/1.1&quot; 200 220562 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+consumer_1  | MainThread worker22: Upload succesful.
+consumer_1  | MainThread worker38: Upload succesful.
+consumer_1  | MainThread worker11: Upload succesful.
+prod1       | 83.149.9.216 - - [04/Jan/2015:05:13:46 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/simple-inputs-filters-outputs.jpg HTTP/1.1&quot; 200 1168622 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+consumer_1  | MainThread worker7: Upload succesful.
+prod1       | 83.149.9.216 - - [04/Jan/2015:05:13:46 +0000] &quot;GET /presentations/logstash-monitorama-2013/images/tiered-outputs-to-inputs.jpg HTTP/1.1&quot; 200 1079983 &quot;http://semicomplete.com/presentations/logstash-monitorama-2013/&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+prod1       | 83.149.9.216 - - [04/Jan/2015:05:13:53 +0000] &quot;GET /favicon.ico HTTP/1.1&quot; 200 3638 &quot;-&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.77 Safari/537.36&quot;
+consumer_1  | MainThread controller: Curently running 66 workers. Queue size: 1692
+.
+.
+.
+prod1       | 24.236.252.67 - - [04/Jan/2015:05:14:10 +0000] &quot;GET /favicon.ico HTTP/1.1&quot; 200 3638 &quot;-&quot; &quot;Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:26.0) Gecko/20100101 Firefox/26.0&quot;
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:32 +0000] &quot;GET /articles/dynamic-dns-with-dhcp/ HTTP/1.1&quot; 200 18848 &quot;http://www.google.ro/url?sa=t&amp;rct=j&amp;q=&amp;esrc=s&amp;source=web&amp;cd=2&amp;ved=0CCwQFjAB&amp;url=http%3A%2F%2Fwww.semicomplete.com%2Farticles%2Fdynamic-dns-with-dhcp%2F&amp;ei=W88AU4n9HOq60QXbv4GwBg&amp;usg=AFQjCNEF1X4Rs52UYQyLiySTQxa97ozM4g&amp;bvm=bv.61535280,d.d2k&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+consumer_1  | MainThread worker54: Upload succesful.
+consumer_1  | MainThread worker56: Upload succesful.
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:32 +0000] &quot;GET /reset.css HTTP/1.1&quot; 200 1015 &quot;http://www.semicomplete.com/articles/dynamic-dns-with-dhcp/&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+consumer_1  | MainThread worker16: Upload succesful.
+consumer_1  | MainThread worker54: Upload succesful.
+consumer_1  | MainThread worker54: Queue is empty.
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:33 +0000] &quot;GET /style2.css HTTP/1.1&quot; 200 4877 &quot;http://www.semicomplete.com/articles/dynamic-dns-with-dhcp/&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+consumer_1  | MainThread worker56: Upload succesful.
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:33 +0000] &quot;GET /favicon.ico HTTP/1.1&quot; 200 3638 &quot;-&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:33 +0000] &quot;GET /images/jordan-80.png HTTP/1.1&quot; 200 6146 &quot;http://www.semicomplete.com/articles/dynamic-dns-with-dhcp/&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+consumer_1  | MainThread worker16: Upload succesful.
+prod1       | 93.114.45.13 - - [04/Jan/2015:05:14:33 +0000] &quot;GET /images/web/2009/banner.png HTTP/1.1&quot; 200 52315 &quot;http://www.semicomplete.com/style2.css&quot; &quot;Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0&quot;
+consumer_1  | MainThread worker56: Upload succesful.
+consumer_1  | MainThread worker16: Upload succesful.
+prod1       | 66.249.73.135 - - [04/Jan/2015:05:15:03 +0000] &quot;GET /blog/tags/ipv6 HTTP/1.1&quot; 200 12251 &quot;-&quot; &quot;Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5376e Safari/8536.25 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)&quot;
+prod1       | 50.16.19.13 - - [04/Jan/2015:05:15:15 +0000] &quot;GET /blog/tags/puppet?flav=rss20 HTTP/1.1&quot; 200 14872 &quot;http://www.semicomplete.com/blog/tags/puppet?flav=rss20&quot; &quot;Tiny Tiny RSS/1.11 (http://tt-rss.org/)&quot;
+prod1       | 66.249.73.185 - - [04/Jan/2015:05:15:23 +0000] &quot;GET / HTTP/1.1&quot; 200 37932 &quot;-&quot; &quot;Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)&quot;
+consumer_1  | MainThread worker56: Upload succesful.
+prod1       | 110.136.166.128 - - [04/Jan/2015:05:16:11 +0000] &quot;GET /projects/xdotool/ HTTP/1.1&quot; 200 12292 &quot;http://www.google.com/url?sa=t&amp;rct=j&amp;q=&amp;esrc=s&amp;source=web&amp;cd=5&amp;cad=rja&amp;sqi=2&amp;ved=0CFYQFjAE&amp;url=http%3A%2F%2Fwww.semicomplete.com%2Fprojects%2Fxdotool%2F&amp;ei=6cwAU_bRHo6urAeI0YD4Ag&amp;usg=AFQjCNE3V_aCf3-gfNcbS924S6jZ6FqffA&amp;bvm=bv.61535280,d.bmk&quot; &quot;Mozilla/5.0 (Windows NT 6.2; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0&quot;
+consumer_1  | MainThread worker16: Upload succesful.
+prod1       | 46.105.14.53 - - [04/Jan/2015:05:16:17 +0000] &quot;GET /blog/tags/puppet?flav=rss20 HTTP/1.1&quot; 200 14872 &quot;-&quot; &quot;UniversalFeedParser/4.2-pre-314-svn +http://feedparser.org/&quot;
+consumer_1  | MainThread worker49: Upload succesful.
+prod1       | 110.136.166.128 - - [04/Jan/2015:05:16:22 +0000] &quot;GET /reset.css HTTP/1.1&quot; 200 1015 &quot;http://www.semicomplete.com/projects/xdotool/&quot; &quot;Mozilla/5.0 (Windows NT 6.2; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0&quot;
+consumer_1  | MainThread worker56: Upload succesful.
+consumer_1  | MainThread worker56: Queue is empty.
+.
+.
+.
+</code></pre>
+
+<p>The <code>controller</code> starts to spin up more workers when the queue has about 325 logs, and the number of workers peaks at around 1692 logs before the queue size slowly starts to decrease all the way down to 0. We can optimize the service further by using the bulk API to index multiple log documents in a single API call and using <a href="https://github.com/b2wdigital/aiologger" target="_blank">aiologger</a> for non blocking logging. That&rsquo;s it for this post. Thank you for reading, I hope it was helpful :)</p>
+
+            </div>
+        </article>
+
+        <hr />
+
+        <div class="post-info">
+                <p>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://example.com/tags/python">python</a></span><span class="tag"><a href="https://example.com/tags/asyncio">asyncio</a></span><span class="tag"><a href="https://example.com/tags/concurrency">concurrency</a></span><span class="tag"><a href="https://example.com/tags/docker">docker</a></span>
+                </p>
+
+            <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>2555 Words</p>
+
+            <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>2020-05-22 10:09 -0500</p>
+        </div>
+
+        
+            <div class="pagination">
+                <div class="pagination__title">
+                    <span class="pagination__title-h"></span>
+                    <hr />
+                </div>
+
+                <div class="pagination__buttons">
+                    
+
+                    
+                        <span class="button next">
+                            <a href="https://example.com/posts/2019/09/understanding-concurrency-with-asyncio/">
+                                <span class="button__text">Understanding concurrency with asyncio</span>
+                                <span class="button__icon">→</span>
+                            </a>
+                        </span>
+                    
+                </div>
+            </div>
+        
+    </main>
+
+            </div>
+
+            
+                <footer class="footer">
+    <div class="footer__inner">
+        <div class="footer__content">
+            <span>&copy; 2020</span>
+            
+                <span><a href="https://example.com">Aaron Mekonnen</a></span>
+            
+            <span><a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a></span>
+            <span> <a href="https://example.com/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a></span>
+        </div>
+    </div>
+    <div class="footer__inner">
+        <div class="footer__content">
+            <span>Powered by <a href="http://gohugo.io">Hugo</a></span>
+            <span>Made with &#10084; by <a href="https://github.com/rhazdon">Djordje Atlialp</a></span>
+        </div>
+    </div>
+</footer>
+
+            
+        </div>
+
+        
+
+
+
+
+<script type="text/javascript" src="https://example.com/bundle.min.dc716e9092c9820b77f96da294d0120aeeb189b5bcea9752309ebea27fd53bbe6b13cffb2aca8ecf32525647ceb7001f76091de4199ac5a3caa432c070247f5b.js" integrity="sha512-3HFukJLJggt3&#43;W2ilNASCu6xibW86pdSMJ6&#43;on/VO75rE8/7KsqOzzJSVkfOtwAfdgkd5BmaxaPKpDLAcCR/Ww=="></script>
+
+
+
+    </body>
+</html>
