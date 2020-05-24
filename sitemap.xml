@@ -3,57 +3,57 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://aaronm.dev/</loc>
+    <loc>/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/tags/asyncio/</loc>
+    <loc>/tags/asyncio/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/tags/concurrency/</loc>
+    <loc>/tags/concurrency/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/tags/docker/</loc>
+    <loc>/tags/docker/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/posts/2020/05/how-to-build-a-python-alternative-to-logstash/</loc>
+    <loc>/posts/2020/05/how-to-build-a-python-alternative-to-logstash/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/posts/</loc>
+    <loc>/posts/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/tags/python/</loc>
+    <loc>/tags/python/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/tags/</loc>
+    <loc>/tags/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/posts/2019/09/understanding-concurrency-with-asyncio/</loc>
+    <loc>/posts/2019/09/understanding-concurrency-with-asyncio/</loc>
     <lastmod>2019-09-13T12:17:41-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/about/</loc>
+    <loc>/about/</loc>
     <lastmod>2014-04-09T00:00:00+00:00</lastmod>
   </url>
   
   <url>
-    <loc>https://aaronm.dev/categories/</loc>
+    <loc>/categories/</loc>
   </url>
   
 </urlset>
