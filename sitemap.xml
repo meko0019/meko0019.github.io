@@ -3,57 +3,57 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://example.com/</loc>
+    <loc>https://aaronm.dev/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/tags/asyncio/</loc>
+    <loc>https://aaronm.dev/tags/asyncio/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/tags/concurrency/</loc>
+    <loc>https://aaronm.dev/tags/concurrency/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/tags/docker/</loc>
+    <loc>https://aaronm.dev/tags/docker/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/posts/2020/05/how-to-build-a-python-alternative-to-logstash/</loc>
+    <loc>https://aaronm.dev/posts/2020/05/how-to-build-a-python-alternative-to-logstash/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/posts/</loc>
+    <loc>https://aaronm.dev/posts/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/tags/python/</loc>
+    <loc>https://aaronm.dev/tags/python/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/tags/</loc>
+    <loc>https://aaronm.dev/tags/</loc>
     <lastmod>2020-05-22T10:09:23-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/posts/2019/09/understanding-concurrency-with-asyncio/</loc>
+    <loc>https://aaronm.dev/posts/2019/09/understanding-concurrency-with-asyncio/</loc>
     <lastmod>2019-09-13T12:17:41-05:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/about/</loc>
+    <loc>https://aaronm.dev/about/</loc>
     <lastmod>2014-04-09T00:00:00+00:00</lastmod>
   </url>
   
   <url>
-    <loc>https://example.com/categories/</loc>
+    <loc>https://aaronm.dev/categories/</loc>
   </url>
   
 </urlset>
